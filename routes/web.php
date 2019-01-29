@@ -11,7 +11,7 @@
 |
 */
 
-Route::get('/', 'HomeController@welcome')->name('welcome');
+Route::get('/', 'ProductController@purchase')->name('welcome');
 
 Auth::routes();
 
@@ -23,4 +23,5 @@ Route::namespace('Paypal')->prefix('payment')->group(function() {
 });
 
 Route::resource('products', 'ProductController');
+// Route::get('purchase', 'ProductController@purchase')->name('purchase');
 

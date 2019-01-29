@@ -16,47 +16,44 @@ use PayPal\Api\RedirectUrls;
 use PayPal\Api\Transaction;
 
 trait Paypal {
-
-	protected $apiContext;
-	protected $products;
-	
-	public function __construct() {
-		$this->apiContext = new \PayPal\Rest\ApiContext(
+    private function contexAPI() {
+		$apiContext = new \PayPal\Rest\ApiContext(
 	        new \PayPal\Auth\OAuthTokenCredential(
 	            config('services.paypal.id'), // ClientID
 	            config('services.paypal.secret') // ClientSecret
 	        )
 	    );
 
-	    $this->products = Product::all();
+	    return $apiContext;
 	}
 	
     public function createPayment() {
-    	$items = array();
-	    foreach ($this->products as $product) {
-	    	$item = new Item();
-			$item->setName($product->name)
-			    ->setCurrency('USD')
-			    ->setQuantity(1)
-			    ->setSku(rand(100000, 999999)) // Similar to `item_number` in Classic API
-			    ->setPrice($product->price);
+    	$item1 = new Item();
+		$item1->setName('Ground Coffee 40 oz')
+		    ->setCurrency('USD')
+		    ->setQuantity(1)
+		    ->setSku("123123") // Similar to `item_number` in Classic API
+		    ->setPrice(20);
+		$item2 = new Item();
+		$item2->setName('Granola bars')
+		    ->setCurrency('USD')
+		    ->setQuantity(1)
+		    ->setSku("321321") // Similar to `item_number` in Classic API
+		    ->setPrice(20);
 
-			$items[] = $item;
-	    }
+		$itemList = new ItemList();
+        $itemList->setItems(array($item1, $item2));
     	$payer = new Payer();
         $payer->setPaymentMethod("paypal");
 
-		$itemList = new ItemList();
-        $itemList->setItems($items);
-
         $details = new Details();
-		$details->setShipping($this->products->sum('shipping'))
-		    ->setTax($this->products->sum('tax'))
-		    ->setSubtotal($this->products->sum('price'));
+		$details->setShipping(20)
+		    ->setTax(25)
+		    ->setSubtotal(40);
 
 	    $amount = new Amount();
 		$amount->setCurrency("USD")
-		    ->setTotal($this->products->sum('shipping') + $this->products->sum('tax') + $this->products->sum('price'))
+		    ->setTotal(85)
 		    ->setDetails($details);
 
 		$transaction = new Transaction();
@@ -75,14 +72,14 @@ trait Paypal {
 		    ->setRedirectUrls($redirectUrls)
 		    ->setTransactions(array($transaction));
 
-		$payment->create($this->apiContext);
+		$payment->create($this->contexAPI());
 
 		return redirect($payment->getApprovalLink());
     }
 
     public function executePayment() {
     	$paymentId = request()->paymentId;
-        $payment = Payment::get($paymentId, $this->apiContext);
+        $payment = Payment::get($paymentId, $this->contexAPI());
 
         $execution = new PaymentExecution();
         $execution->setPayerId(request()->PayerID);
@@ -91,18 +88,18 @@ trait Paypal {
 	    $amount = new Amount();
 
 	    $details = new Details();
-	    $details->setShipping($this->products->sum('shipping'))
-		        ->setTax($this->products->sum('tax'))
-		        ->setSubtotal($this->products->sum('price'));
+	    $details->setShipping($ship)
+		        ->setTax($tax)
+		        ->setSubtotal($cost);
 
 		$amount->setCurrency('USD');
-	    $amount->setTotal($this->products->sum('shipping') + $this->products->sum('tax') + $this->products->sum('price'));
+	    $amount->setTotal($totat);
 	    $amount->setDetails($details);
 	    $transaction->setAmount($amount);
 
 	    $execution->addTransaction($transaction);
 
-	    $result = $payment->execute($execution, $this->apiContext);
+	    $result = $payment->execute($execution, $this->contexAPI());
 
         return $result;
     }

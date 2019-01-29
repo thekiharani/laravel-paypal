@@ -14,7 +14,13 @@ class ProductController extends Controller
      */
     public function index()
     {
-        //
+    	$products = Product::all();
+        return view('products', compact('products'));
+    }
+
+    public function purchase() {
+    	$products = Product::all();
+    	return view('welcome', compact('products'));
     }
 
     /**
@@ -24,7 +30,7 @@ class ProductController extends Controller
      */
     public function create()
     {
-        //
+        return view('create');
     }
 
     /**
@@ -43,7 +49,7 @@ class ProductController extends Controller
 
         $product->save();
 
-        return back()->withInput()->with('success','Product created!');
+        return redirect()->route('products.index')->withInput()->with('success','Product created!');
     }
 
     /**
