@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Product;
+use App\Order;
+use App\Purchase;
+use App\Traits\Paypal;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
-class ProductController extends Controller
+class OrderController extends Controller
 {
+	use Paypal;
     /**
      * Display a listing of the resource.
      *
@@ -14,13 +18,11 @@ class ProductController extends Controller
      */
     public function index()
     {
-    	$products = Product::all();
-        return view('products', compact('products'));
+    	//
     }
 
     public function purchase() {
-    	$products = Product::all();
-    	return view('welcome', compact('products'));
+    	//
     }
 
     /**
@@ -30,7 +32,7 @@ class ProductController extends Controller
      */
     public function create()
     {
-        return view('create');
+        //
     }
 
     /**
@@ -41,14 +43,31 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        $product = new Product;
-        $product->name = $request->name;
-        $product->price = $request->price;
-        $product->tax = $request->tax;
+    	$order = new Order;
+        $order->ref_code = 'TKS-'.rand(100000, 999999);
+        $order->save();
 
-        $product->save();
-
-        return redirect()->route('products.index')->withInput()->with('success','Product created!');
+         for ($i=0; $i < count($request->price); $i++) { 
+         	$purchase = new Purchase;
+         	$purchase->qty        = $request->qty[$i];
+	        $purchase->price      = $request->price[$i];
+	        $purchase->tax        = $request->tax[$i];
+	        $purchase->total      = $request->total[$i];
+	        $purchase->amount     = $request->total[$i] * $request->qty[$i];
+	        $purchase->product_id = $request->product_id[$i];
+	        $purchase->order_id   = $order->id;
+	        $purchase->save();
+        }
+    	DB::beginTransaction();
+    	try {
+	        return $this->createPayment($order);
+	        DB::commit();
+        } catch (\Exception $e) {
+        	$order->purchases()->delete();
+        	$order->delete();
+		    DB::rollback();
+		    return redirect()->back()->withInput()->with('error', $e->getMessage());
+		}
     }
 
     /**

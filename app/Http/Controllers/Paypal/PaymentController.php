@@ -3,11 +3,9 @@
 namespace App\Http\Controllers\Paypal;
 
 use App\Http\Controllers\Controller;
-use App\Product;
+use App\Order;
 use App\Traits\Paypal;
 use Illuminate\Http\Request;
-use PayPal\Api\Item;
-use PayPal\Api\ItemList;
 
 class PaymentController extends Controller
 {
@@ -17,9 +15,8 @@ class PaymentController extends Controller
     	return $this->createPayment();
     }
 
-    public function execute() {
-    	dd('success');
-    	return $this->executePayment();
+    public function execute(Order $order) {
+    	return $this->executePayment($order);
     }
 
     public function cancel() {

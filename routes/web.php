@@ -18,10 +18,11 @@ Auth::routes();
 Route::get('/home', 'HomeController@index')->name('home');
 Route::namespace('Paypal')->prefix('payment')->group(function() {
 	Route::post('create', 'PaymentController@create')->name('payment.create');
-	Route::get('execute', 'PaymentController@execute')->name('payment.execute');
+	Route::get('{order}/execute', 'PaymentController@execute')->name('payment.execute');
 	Route::get('cancel', 'PaymentController@cancel')->name('payment.cancel');
 });
 
 Route::resource('products', 'ProductController');
+Route::resource('orders', 'OrderController');
 // Route::get('purchase', 'ProductController@purchase')->name('purchase');
 

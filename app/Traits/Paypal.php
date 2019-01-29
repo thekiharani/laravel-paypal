@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\Http\Controllers\Controller;
 use App\Product;
+use App\order;
 use Illuminate\Http\Request;
 use PayPal\Api\Amount;
 use PayPal\Api\Details;
@@ -27,33 +28,32 @@ trait Paypal {
 	    return $apiContext;
 	}
 	
-    public function createPayment() {
-    	$item1 = new Item();
-		$item1->setName('Ground Coffee 40 oz')
-		    ->setCurrency('USD')
-		    ->setQuantity(1)
-		    ->setSku("123123") // Similar to `item_number` in Classic API
-		    ->setPrice(20);
-		$item2 = new Item();
-		$item2->setName('Granola bars')
-		    ->setCurrency('USD')
-		    ->setQuantity(1)
-		    ->setSku("321321") // Similar to `item_number` in Classic API
-		    ->setPrice(20);
+    public function createPayment($order) {
+    	$items = array();
+    	foreach ($order->purchases as $purchase) { 
+    		$item = new Item();
+			$item->setName($purchase->product->name)
+			    ->setCurrency('USD')
+			    ->setQuantity($purchase->qty)
+			    ->setSku("123123") // Similar to `item_number` in Classic API
+			    ->setPrice($purchase->product->less_tax);
 
-		$itemList = new ItemList();
-        $itemList->setItems(array($item1, $item2));
+			$items[] = $item;
+	    }
+
+	    $itemList = new ItemList();
+        $itemList->setItems($items);
     	$payer = new Payer();
         $payer->setPaymentMethod("paypal");
 
         $details = new Details();
-		$details->setShipping(20)
-		    ->setTax(25)
-		    ->setSubtotal(40);
+		$details->setShipping(0.00)
+		    ->setTax($order->purchases->sum('tax_value'))
+		    ->setSubtotal($order->purchases->sum('less_tax'));
 
 	    $amount = new Amount();
 		$amount->setCurrency("USD")
-		    ->setTotal(85)
+		    ->setTotal($order->purchases->sum('amount'))
 		    ->setDetails($details);
 
 		$transaction = new Transaction();
@@ -63,7 +63,7 @@ trait Paypal {
 		    ->setInvoiceNumber(uniqid());
 
 		$redirectUrls = new RedirectUrls();
-		$redirectUrls->setReturnUrl(route('payment.execute'))
+		$redirectUrls->setReturnUrl(route('payment.execute', $order->id))
 		    ->setCancelUrl(route('payment.cancel'));
 
 		$payment = new Payment();
@@ -77,7 +77,7 @@ trait Paypal {
 		return redirect($payment->getApprovalLink());
     }
 
-    public function executePayment() {
+    public function executePayment($order) {
     	$paymentId = request()->paymentId;
         $payment = Payment::get($paymentId, $this->contexAPI());
 
@@ -88,12 +88,12 @@ trait Paypal {
 	    $amount = new Amount();
 
 	    $details = new Details();
-	    $details->setShipping($ship)
-		        ->setTax($tax)
-		        ->setSubtotal($cost);
+	    $details->setShipping(0.00)
+		        ->setTax($order->purchases->sum('tax_value'))
+		        ->setSubtotal($order->purchases->sum('less_tax'));
 
 		$amount->setCurrency('USD');
-	    $amount->setTotal($totat);
+	    $amount->setTotal($order->purchases->sum('amount'));
 	    $amount->setDetails($details);
 	    $transaction->setAmount($amount);
 
